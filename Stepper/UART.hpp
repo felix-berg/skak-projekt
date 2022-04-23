@@ -4,7 +4,7 @@
 #include <QueueArray.h>
 
 // User defined type
-#ifndef UART_PACKET_TYPE
+#ifndef UART_PACKET_TYPE   
 #error No packet type defined. Usage example: #define UART_PACKET_TYPE unsigned int
 #endif
 
@@ -35,8 +35,9 @@ namespace uart {
             return Packet { 0 };
          }
 
-         return m_packetBuffer.dequeue();;
+         return m_packetBuffer.dequeue();
       }
+
    private:
       QueueArray<Packet> m_packetBuffer;
 
@@ -65,8 +66,6 @@ namespace uart {
 
          m_timeBetweenPackets = m_delayTime * (uart::Packet::n_bits * 2); // leeway for receiver to pick up new interrupt
       };
-
-      void unload();
 
       void send(const Packet & p) { 
          m_packetBuffer.enqueue(p);
@@ -103,6 +102,7 @@ namespace uart {
                send_bit(b);
             }
 
+            // end bit
             send_bit(LOW);
 
          }

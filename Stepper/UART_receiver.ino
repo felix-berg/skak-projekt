@@ -11,14 +11,13 @@ int g_numInterrupts = 0;
 
 int g_interruptTimeThreshold = -1;
 
+
+
 Reciever * globalReceiver;
-
-
 volatile u_long g_lastPacketRecieve = 0;
-
 void uart::on_get_bit() 
 {
-   noInterrupts(); // avoid doubling of 
+   noInterrupts(); // avoid double-calling
 
    u_long mcs = micros();
    if (mcs - g_lastPacketRecieve > g_interruptTimeThreshold) {
