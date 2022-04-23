@@ -127,17 +127,18 @@ void Stepper::update() {
       m_last_pulse = micros(); 
    }
 
+   // after last step -> reset to 0
   if (!should_move && m_step_pin_state) {
     if (micros() - m_last_pulse > m_pulse_time) {
       pulse();
-      // reset timer by adding the waited time
-      m_last_pulse += m_pulse_time; 
+      // reset time
+      m_last_pulse = micros(); 
     }
   }
 
-  if (micros() - m_last_pulse > time_until_sleep)
-    set_sleep(false);
-
+   // --- disabled -> physics got in the way
+//   if (micros() - m_last_pulse > time_until_sleep)
+//     set_sleep(false);
 }
 
 #endif
