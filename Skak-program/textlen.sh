@@ -1,0 +1,1 @@
+wc -l *pp chess_lib/include/*pp chess_lib/src/*pp  PC_Chess_IO/*pp chess_algorithm/include/*pp chess_algorithm/src/*pp
