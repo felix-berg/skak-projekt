@@ -65,7 +65,7 @@ protected:
    int m_pulse_time; // time in µs of half a step-time
 
 private:
-   bool m_pinstate = false;
+   bool m_step_pin_state = false;
    bool m_direction = true;
    bool m_sleep = true;
    unsigned long m_last_pulse;
@@ -81,7 +81,7 @@ void Stepper::init() {
 
    // set default values to pins
    digitalWrite(dir_pin, m_direction);
-   digitalWrite(step_pin, m_pinstate);
+   digitalWrite(step_pin, m_step_pin_state);
 
   set_sleep(false);
   
@@ -94,41 +94,40 @@ void Stepper::init() {
 */
 void Stepper::pulse() {
    // switch step pin
-   m_pinstate = !m_pinstate;
-   digitalWrite(step_pin, m_pinstate);
+   m_step_pin_state = !m_step_pin_state;
+   digitalWrite(step_pin, m_step_pin_state);
 
-   if (!m_pinstate) { // if this was a falling pulse, a step is done
+   if (!m_step_pin_state) { // if this was a falling pulse, a step is done
       m_current_step += int(m_direction) * 2 - 1; // set to -1 or 1 depending on m_direction.
    }
 }
+
 /*
    Should be called in the arduino update() function.
    Steps the motor, if the given pulse-time has passed.
    Deals with m_current_step.
 */
 void Stepper::update() {
-   bool should_move = m_current_step != m_target_step;
+   bool should_move = !at_target();
 
-   if (should_move) { /* Move towards target */
-    set_sleep(false);
+   if (should_move && micros() - m_last_pulse > m_pulse_time) {
+      /* Move towards target */
+      set_sleep(false);
     
       bool target_dir = m_target_step > m_current_step;
    
       if (target_dir != m_direction) {
         // if the direction is incorrect.
-      dir(target_dir); // set the direction of the step
+         dir(target_dir); // set the direction of the step
       }
-         
 
-      // if enough time has passed since the last pulse
-      if (micros() - m_last_pulse > m_pulse_time) {
-         pulse();
-         // reset timer by adding the waited time
-         m_last_pulse = micros(); 
-      }
+      // switch the state of step_pin
+      pulse();
+      // reset timer 
+      m_last_pulse = micros(); 
    }
 
-  if (!should_move && m_pinstate) {
+  if (!should_move && m_step_pin_state) {
     if (micros() - m_last_pulse > m_pulse_time) {
       pulse();
       // reset timer by adding the waited time
