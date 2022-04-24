@@ -1,4 +1,112 @@
+#include "LCD_screen.hpp"
+#include "stepper_communication.hpp"
+#include "algorithm_communication.hpp"
 
+LCD_screen lcd { };
+uart::Transmitter stepperRX { 2, 9600 };
+uart::Transmitter stepperTX { 3, 9600 };
+
+
+void setup()
+{
+   Serial.begin(9600);
+   lcd.init();
+
+   lcd.set_str("Going!", 0);
+   lcd.update();
+   delay(100);
+}
+
+bool done = false;
+void loop()
+{
+   if (!done) {
+      // send_restart_command();
+      // send_move_to_algorithm(4, 6, 4, 4); // E7 -> E5
+      // delay(100);
+      // int fx, fy, tx, ty;
+      // get_ai_move_from_algorithm(&fx, &fy, &tx, &ty);
+
+      // lcd.set_str("", 0);
+      // lcd.append_char('0' + fx, 0);
+      // lcd.append_char('0' + fy, 0);
+
+      // delay(1000);
+
+      // byte psb[8];
+      // get_possible_moves(psb, 4, 6);
+
+      // for (int i = 0; i < 8; i++) {
+      //    lcd.set_str("", 0);
+      //    lcd.append_char('0' + i, 0);
+      //    lcd_set_bitstring(psb[i]);
+      //    delay(500);
+      // }
+
+      // delay(1000);
+
+      byte pcs[8] = {0};
+      get_all_pieces(pcs);
+
+      for (int i = 0; i < 8; i++) {
+         lcd.set_str("", 0);
+         lcd.append_char('0' + i, 0);
+         lcd.set_str("", 1);
+         for (int i = 0; i < 8; i++) {
+            bool bit = pcs[i] & (0b10000000 >> i);
+            lcd.append_char(bit ? '1' : '0', 1);
+         }
+         delay(500);
+      }
+
+      done = true;
+   }
+
+   lcd.update();
+}
+
+
+
+
+
+void throw_error(const char * str)
+{
+   lcd.set_str("Error: ", 0);
+   lcd.set_str(str, 1);
+   lcd.update();
+   delay(2000);
+   exit(1);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
 #define UART_PACKET_TYPE byte
 #include "UART.hpp"
 
@@ -13,8 +121,11 @@ void setup()
   uartTX.init();
 }
 
-#define FROM true
-#define TO   false
+
+void move_piece_from_to(int fx, int fy, int tx, int ty)
+{
+   byte fb = construct_stepper_command()
+}
 
 void print_byte(byte b)
 {
@@ -28,7 +139,8 @@ void print_byte_ln(byte b)
   Serial.println();
 }
 
-byte construct_command(bool is_from, byte x, byte y) 
+enum FromTo { FROM, TO };
+byte construct_stepper_command(FromTo ft, byte x, byte y) 
 {
   if (x >= 8 || y >= 8) {
     Serial.println("Error: Can't move outside [0-7] range");
@@ -37,7 +149,7 @@ byte construct_command(bool is_from, byte x, byte y)
   }
 
   return
-    (is_from ? 0b01000000 : 0b10000000) // Op code
+    ((ft == FROM) ? 0b01000000 : 0b10000000) // Op code
       |
     (x << 3) // x-coordinate
       |
@@ -69,7 +181,7 @@ void loop()
 }
 
 
-
+*/
 
 
 

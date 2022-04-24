@@ -45,6 +45,10 @@ void destroy_board(Chess_Board * board)
 
 void send_byte(byte b)
 {
+	std::cout << "Sending byte: ";
+	for (int i = 0; i < 8; i++)
+		std::cout << bool(b & (0b10000000 >> i));
+	std::cout << '\n';
 	serialPutchar(serialConnection, b);
 }
 
@@ -62,7 +66,7 @@ void respond_to_move_req(Chess_Board & b, char fx, char fy, char tx, char ty)
 
 	Move user_move { b, f, t };
 
-	if (user_move.is_valid) {
+	if (user_move.is_valid && currentColor == b.color_of_piece(f)) {
 		b.do_move(user_move);
 		send_byte(SUCCESS);
 		currentColor = other_color(currentColor);
@@ -112,6 +116,21 @@ void respond_to_ai_req(Chess_Board & b, Chess_AI & ai)
 	}
 }
 
+void respond_to_reset()
+{
+	destroy_board(g_board);
+	g_board = create_board();
+
+	if (g_board != nullptr)
+		send_byte(SUCCESS);
+	else 
+		send_byte(ERROR_CODE);
+}
+
+void respond_to_get_all_pieces() {
+
+}
+
 /* Rules for incoming data: 
  * |header (2)|(data) (6)|
  * Header (2 bytes):
@@ -124,6 +143,7 @@ void respond_to_ai_req(Chess_Board & b, Chess_AI & ai)
 	* 11: allow ai to move, and return move 
 		* no data
 	* SPECIAL CASES:
+		* 0b11111110: get all piece positions
 		* 0b11111111: reset board
 */
 
@@ -142,46 +162,54 @@ int main() {
 
 	Chess_AI ai { Chess_Board::Piece_color::BLACK, ai_defense, ai_offense };
 
-	Chess_Board * board = create_board();
+	Chess_Board * g_board = create_board();
 
 	init_serial();
 	
-
 	char fromX = -1, 
 		 fromY = -1;
+
 
 	while (true) {
 		if (serialDataAvail(serialConnection) > 0) {
 			byte data = serialGetchar(serialConnection);
 
+			std::cout << "Request\n";
+
+			// special case: reset board
 			if (data == 0b11111111) {
-				destroy_board(board);
-				board = create_board();
+				respond_to_reset();
+				// continue while loop - escape if statement
+				continue;
+			} else if (data == 0b11111110) {
+				respond_to_get_all_pieces();
+				continue;
 			}
 
 			char x, y;
 			byte opCode;
 			parse_byte(data, opCode, x, y);
 
-			std::cout << "Got byte: (" << (int) opCode << ", (" << (int) x << ", " << (int) y  << ")\n";
+			std::cout << "Got command: (" << (int) opCode << ", (" << (int) x << ", " << (int) y  << ")\n";
 
 			switch(opCode) {
 				case 0b00:
-					respond_to_get_req(*board, x, y);
+					respond_to_get_req(*g_board, x, y);
 					break;
 				case 0b01:
 					fromX = x;
 					fromY = y;
 					break;
 				case 0b10:
-					respond_to_move_req(*board, fromX, fromY, x, y);
+					respond_to_move_req(*g_board, fromX, fromY, x, y);
 					break;
 				case 0b11:
-					respond_to_ai_req(*board, ai);
+					respond_to_ai_req(*g_board, ai);
 					break;
 			}
+
+			print_board(g_board->pieces);
 		}
-		usleep(100000);
 	}
 
 

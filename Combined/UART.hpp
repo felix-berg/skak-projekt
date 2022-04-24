@@ -79,6 +79,8 @@ namespace uart {
          }
       };
 
+      bool has_pending() const { return m_packetBuffer.count() > 0; };
+
    private:
       unsigned long m_delayTime;
       unsigned long m_timeBetweenPackets;

@@ -118,11 +118,14 @@ void react_to_command(byte b) {
   }
 }
 
+#define SUCCESS 0b00000010
+
 void check_for_commands() {
   while (!uartRX.isEmpty()) {
     byte b = uartRX.read_packet().msg;
 
     react_to_command(b);
+    uartTX.send(Packet {SUCCESS});
   }
 }
 
