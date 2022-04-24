@@ -1,7 +1,5 @@
 class Buttons {
 	public:
-		static const int time_between_polls = 2000; // once every 2000 µs
-
 		Buttons(int in, int cl) : input_pin { in }, clock_pin { cl } { };
 
 		void init();
@@ -15,8 +13,6 @@ class Buttons {
 
 		byte m_poll_result = 0;
 		byte m_recent = 0; // which buttons just changed?
-
-		unsigned long m_last_poll_time = 0;
 
 		void long_clock();
 		void short_clock();
@@ -74,15 +70,10 @@ bool Buttons::key_just_pressed(int i) {
 	To be called in the loop() arduino function. Reads a byte and returns it. The buttons state can be gotten with key_is_down().
 */
 byte Buttons::poll() {
-	unsigned long mcs = micros();
-	if (mcs - m_last_poll_time > time_between_polls) {
-		byte last = m_poll_result;
-		m_poll_result = read_byte();
+	byte last = m_poll_result;
+	m_poll_result = read_byte();
 
-		m_recent = (last ^ m_poll_result) & m_poll_result;
-
-		m_last_poll_time = mcs;
-	}
+	m_recent = (last ^ m_poll_result) & m_poll_result;
 
 	return m_poll_result;
 }

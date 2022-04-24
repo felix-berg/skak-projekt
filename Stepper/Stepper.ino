@@ -3,7 +3,6 @@
 #include "UART.hpp"
 
 #define ELECTROMAGNETPIN 6
-
 Plotter plotter { 
   7,  6, 5, 13, ButtonSide::RIGHT,
   10, 9, 8, 12, ButtonSide::LEFT,
@@ -12,16 +11,6 @@ Plotter plotter {
 
 uart::Reciever    uartRX { 2, 9600 };
 uart::Transmitter uartTX { 3, 9600 };
-
-void print_byte(byte b) {
-  for (int i = 0; i < 8; i++) 
-    Serial.print((bool) (b & (0b10000000 >> i)));
-}
-
-void print_byte_ln(byte b) {
-  print_byte(b);
-  Serial.println();
-}
 
 const int close_x   = 50;
 const int close_y   = 50;
@@ -141,7 +130,11 @@ void setup() {
 
   Serial.println("Calibrating stepper motors...");
 
-  //plotter.calibrate();
+  plotter.calibrate();
+
+  // move to middle
+  plotter.move_to(CalibratingStepper::maxSteps / 2,
+                  CalibratingStepper::maxSteps / 2);
 
   delay(100);
 
@@ -153,8 +146,6 @@ void setup() {
 
 void loop() {
   check_for_commands();
-
-  move_piece_from_to(3, 2, 5, 6);
   
   uartTX.update();
 }
