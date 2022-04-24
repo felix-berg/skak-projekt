@@ -31,7 +31,7 @@ namespace uart {
       Packet read_packet() 
       {
          if (num_packets() <= 0) {
-            Serial.println("Error: Cannot pop empty buffer.\n");
+            // Serial.println("Error: Cannot pop empty buffer.\n");
             return Packet { 0 };
          }
 
@@ -79,6 +79,8 @@ namespace uart {
          }
       };
 
+      bool has_pending() const { return m_packetBuffer.count() > 0; };
+
    private:
       unsigned long m_delayTime;
       unsigned long m_timeBetweenPackets;
@@ -108,14 +110,6 @@ namespace uart {
          }
       };
    };
-
-   void print_packet(const Packet & p) {
-      for (int i = Packet::n_bits - 1; i >= 0; i--) {
-         bool b = (0b1 << i) & p.msg;
-         Serial.print(b);
-      }
-   }
-
 };
 
 #endif

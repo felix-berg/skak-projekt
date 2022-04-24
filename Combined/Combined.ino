@@ -1,73 +1,265 @@
 #include "LCD_screen.hpp"
+#include "Matrix_screen.hpp"
+#include "inputs.hpp"
 #include "stepper_communication.hpp"
 #include "algorithm_communication.hpp"
 
+// user interface
+// output
 LCD_screen lcd { };
-uart::Transmitter stepperRX { 2, 9600 };
-uart::Transmitter stepperTX { 3, 9600 };
+Matrix_screen mtx { 8, 9, 10 };
 
+// input
+Buttons buttons { 6, 7 };
+
+enum ChessGameState {
+   // loop:
+   USER_CHOOSING, WAIT_FOR_ALGORITHM
+};
+
+ChessGameState g_gameState = USER_CHOOSING;
+
+void next_game_state()
+{
+   // switch
+   g_gameState = (g_gameState == USER_CHOOSING) ? WAIT_FOR_ALGORITHM : USER_CHOOSING;
+}
+
+const int key_select = 5;
+const int key_left   = 3; 
+const int key_right  = 2;
+const int key_down   = 1;
+const int key_up     = 0;
+
+// communication to stepper motors
+uart::Reciever    stepperRX { 2, 9600 };
+uart::Transmitter stepperTX { 3, 9600 };
 
 void setup()
 {
+  // intialize communication with chess-algorithm
    Serial.begin(9600);
-   lcd.init();
 
-   lcd.set_str("Going!", 0);
-   lcd.update();
+   // initialize user interface
+   lcd.init();
+   mtx.init();
+   buttons.init();
+   stepperRX.init();
+   stepperTX.init();
+
+   lcd.clear_screen();
+
    delay(100);
+   // restart the game, when arduino is powered on
+   send_restart_command();
 }
 
-bool done = false;
+void loop_user_choosing();
+void wait_for_algorithm();
+
 void loop()
 {
-   if (!done) {
-      // send_restart_command();
-      // send_move_to_algorithm(4, 6, 4, 4); // E7 -> E5
-      // delay(100);
-      // int fx, fy, tx, ty;
-      // get_ai_move_from_algorithm(&fx, &fy, &tx, &ty);
+   buttons.poll();
 
-      // lcd.set_str("", 0);
-      // lcd.append_char('0' + fx, 0);
-      // lcd.append_char('0' + fy, 0);
-
-      // delay(1000);
-
-      // byte psb[8];
-      // get_possible_moves(psb, 4, 6);
-
-      // for (int i = 0; i < 8; i++) {
-      //    lcd.set_str("", 0);
-      //    lcd.append_char('0' + i, 0);
-      //    lcd_set_bitstring(psb[i]);
-      //    delay(500);
-      // }
-
-      // delay(1000);
-
-      byte pcs[8] = {0};
-      get_all_pieces(pcs);
-
-      for (int i = 0; i < 8; i++) {
-         lcd.set_str("", 0);
-         lcd.append_char('0' + i, 0);
-         lcd.set_str("", 1);
-         for (int i = 0; i < 8; i++) {
-            bool bit = pcs[i] & (0b10000000 >> i);
-            lcd.append_char(bit ? '1' : '0', 1);
-         }
-         delay(500);
-      }
-
-      done = true;
+   switch(g_gameState) {
+      case USER_CHOOSING:
+         loop_user_choosing(); break;
+      case WAIT_FOR_ALGORITHM:
+         wait_for_algorithm(); break;
    }
 
-   lcd.update();
+   update_user_interface();
 }
 
+// current cursor position
+int cursorX = 3, cursorY = 3;
+void set_cursor(int x, int y)
+{
+   cursorX = x;
+   cursorY = y;
+}
 
+void move_cursor(int dx, int dy)
+{
+   cursorX += dx;
+   cursorY += dy;
+}
 
+bool g_cursorBlinkState = false;
+const unsigned long cursorBlinkTime = 200; 
+unsigned long g_cursorLastBlink = 0;
+/** Override matrix display with blink cursor at (cursorX, cursorY). */
+void display_cursor()
+{
+   if (millis() - g_cursorLastBlink > cursorBlinkTime) {
+      g_cursorBlinkState = !g_cursorBlinkState;
+   }
 
+   // override pixel on matrix screen to cursors blink state
+   mtx.pixels[cursorY] &= ~(g_cursorBlinkState << (7 - cursorX));
+}
+
+byte g_chessBoard[8]; 
+/** Get state of chess board by polling algorithm. */
+void update_chess_board()
+{
+   get_all_pieces(g_chessBoard);
+}
+
+byte g_possibleMoves[8];
+/** Update the state of g_possibleMoves based on algorithm response. */
+void update_possible_moves(int fx, int fy)
+{
+   get_possible_moves(g_possibleMoves, fx, fy);
+}
+
+/* Returns whether a given position tx, ty is valid from the g_possibleMoves array */
+bool move_is_possible(int tx, int ty)
+{
+   return bool(g_possibleMoves[ty] & (0b10000000 >> tx));
+}
+
+/** Update pixels on matrix display with the given array of bytes. */
+void update_matrix_screen_with_arr(byte * arr)
+{
+   for (int i = 0; i < 8; i++) {
+      byte row = arr[i];
+      if (mtx.pixels[i] != row)
+         mtx.pixels[i] = row;
+   }
+}
+
+/** Display either the state of the chess board or possible 
+ *  moves based on the g_displayPossibleMoves boolean. */
+void update_chess_screen(bool displayPossibleMoves)
+{
+   // display either chess board or possible moves
+   update_matrix_screen_with_arr(
+      displayPossibleMoves ? g_possibleMoves : g_chessBoard);
+
+   // override with cursor pixel
+   display_cursor();
+}
+
+bool g_chessBoardUpdated = false;
+int fromX = -1,
+    fromY = -1;
+void loop_user_choosing()
+{
+   // if this is first time -> update the state of the chess board
+   // by getting it from the algorithm
+   if (!g_chessBoardUpdated) {
+      lcd.set_str("Choose \"from\"", 0);
+      update_chess_board();
+      g_chessBoardUpdated = true;
+   }
+   
+   // move cursor based on button input
+   if (buttons.key_just_pressed(key_left))  move_cursor(-1,  0);
+   if (buttons.key_just_pressed(key_right)) move_cursor( 1,  0);
+   if (buttons.key_just_pressed(key_down))  move_cursor( 0,  1);
+   if (buttons.key_just_pressed(key_up))    move_cursor( 0, -1);
+
+   if (buttons.key_just_pressed(key_select)) {
+      if (fromX == -1 || fromY == -1) {
+         // from position not set -> set it
+         fromX = cursorX; fromY = cursorY;
+
+         // update the state of g_possibleMoves 
+         // based on the selected "from" square
+         update_possible_moves(fromX, fromY);
+
+         lcd.set_str("Choose \"to\"", 0);
+      } else {
+         // selecting "to" position
+         int toX = cursorX,
+             toY = cursorY;
+
+         // if same position chosen -> deselect "from" position
+         if (toX == fromX && toY == fromY) {
+            fromX = -1;
+            fromY = -1;
+
+            lcd.set_str("Choose \"from\"", 0);
+         } else { // new position 
+            // is the move possible?
+            if (move_is_possible(toX, toY)) {
+               // yes -> do move
+
+               // send to algorithm
+               send_move_to_algorithm(fromX, fromY, toX, toY);
+
+               // send to stepper motor
+               move_piece_from_to(stepperRX, stepperTX, fromX, fromY, toX, toY);
+
+               // reset state of loop_user_choosing 
+               // and go to next game stage
+               fromX = -1; fromY = -1;
+               g_chessBoardUpdated = false;
+               next_game_state();
+
+            } else 
+               ;/* Invalid move -> do nothing*/
+         }
+      }
+   }
+
+   // display possible moves if fromX is defined (and fromY)
+   bool displayPossibleMoves = fromX != -1;
+
+   // display current chess board (or possible moves) and cursor on screen
+   update_chess_screen(displayPossibleMoves);
+}
+
+void wait_for_algorithm()
+{
+   // at this point, stepper has moved user piece
+   int fx, fy, tx, ty;
+   get_ai_move_from_algorithm(&fx, &fy, &tx, &ty);
+   move_piece_from_to(stepperRX, stepperTX, fx, fy, tx, ty);
+
+   next_game_state();
+}
+
+byte g_waiting[] = {
+   0b00010001,
+   0b00100010,
+   0b01000100,
+   0b10001000,
+   0b00010001,
+   0b00100010,
+   0b01000100,
+   0b10001000,
+};
+
+void rotate_bits_r(byte * b)
+{
+   byte remaining = (*b & 1) << 7;
+   *b <<= 1;
+   *b |= remaining;
+}
+
+const int g_animationFrametime = 100; // in ms
+unsigned long g_lastAnimationFrame = 0;
+void display_waiting_animation()
+{
+   unsigned long ms = millis();
+   if (ms - g_lastAnimationFrame > g_animationFrametime) {
+      for (int i = 0; i < 8; i++)
+         rotate_bits_r(g_waiting[i]);
+
+      g_lastAnimationFrame = ms;
+   }
+
+   update_user_interface();
+}
+
+void update_user_interface()
+{
+   lcd.update();
+   mtx.update();
+   stepperTX.update();
+}
 
 void throw_error(const char * str)
 {
@@ -77,192 +269,3 @@ void throw_error(const char * str)
    delay(2000);
    exit(1);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-#define UART_PACKET_TYPE byte
-#include "UART.hpp"
-
-uart::Reciever    uartRX { 2, 9600 };
-uart::Transmitter uartTX { 3, 9600 };
-
-void setup()
-{
-  Serial.begin(9600);
-  
-  uartRX.init();
-  uartTX.init();
-}
-
-
-void move_piece_from_to(int fx, int fy, int tx, int ty)
-{
-   byte fb = construct_stepper_command()
-}
-
-void print_byte(byte b)
-{
-  for (int i = 0; i < 8; i++)
-    Serial.print(bool(b & (0b10000000 >> i)));
-}
-
-void print_byte_ln(byte b)
-{
-  print_byte(b);
-  Serial.println();
-}
-
-enum FromTo { FROM, TO };
-byte construct_stepper_command(FromTo ft, byte x, byte y) 
-{
-  if (x >= 8 || y >= 8) {
-    Serial.println("Error: Can't move outside [0-7] range");
-    delay(100);
-    exit(1);
-  }
-
-  return
-    ((ft == FROM) ? 0b01000000 : 0b10000000) // Op code
-      |
-    (x << 3) // x-coordinate
-      |
-     y;      // y-coordinate
-}
-
-bool from = true;
-void loop()
-{
-
-  while (Serial.available() > 0) {
-    Serial.read();
-    
-      byte b;
-    if (from) {
-      b = construct_command(FROM, 0, 0);
-      from = false;
-    } else {
-      b = construct_command(TO, 7, 7);
-      from = true;
-    }
-      
-    print_byte_ln(b);
-
-    uartTX.send({b});
-  }
-
-  uartTX.update();
-}
-
-
-*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-#include "Matrix_screen.hpp"
-#include "LCD_screen.hpp"
-#include "inputs.hpp"
-
-Matrix_screen mtx { 13, 12, 11 };
-LCD_screen lcd { };
-Buttons buttons { 7, 6 };
-
-void rotate_bits_r(byte & b) 
-{
-  byte remaining_bit = (b & 0b00000001) << 7;
-  b >>= 1;
-  
-  b |= remaining_bit;
-}
-void rotate_bits_l(byte & b)
-{
-  
-}
-
-void setup() {
-  Serial.begin(9600);
-  mtx.init();
-  lcd.init();
-  buttons.init();
-
-  mtx.pixels[0] = 0b10001000;
-  mtx.pixels[1] = 0b01000100;
-  mtx.pixels[2] = 0b00100010;
-  mtx.pixels[3] = 0b00010001;
-  mtx.pixels[4] = 0b10001000;
-  mtx.pixels[5] = 0b01000100;
-  mtx.pixels[6] = 0b00100010;
-  mtx.pixels[7] = 0b00010001;
-
-  lcd.set_str("yep", 0);
-
-  pinMode(8, OUTPUT);
-}
-
-unsigned long lastUpdate = 0;
-unsigned long interval = 200;
-
-int row = 0;
-
-void loop () {
-
-  digitalWrite(8, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(8, LOW);
-
-  byte b = buttons.poll();
-
-  for (int i = 0; i < 8; i++)
-   mtx.pixels[i] = b;
-  
-  if (b) {
-    lcd.set_str("Knap trykket!", 0);
-    lcd.clear_row(1);
-  } else {
-    lcd.set_str("Knap ikke", 0);
-    lcd.set_str("trykket!", 1);
-  }
-  
-  mtx.update(); 
-  lcd.update();
-}*/

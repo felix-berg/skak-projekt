@@ -1,6 +1,0 @@
-{
-    "port": "/dev/ttyACM1",
-    "board": "arduino:avr:uno",
-    "programmer": "arduino:avrispmkii",
-    "sketch": "skankspil_arduino_2bytes.ino"
-}

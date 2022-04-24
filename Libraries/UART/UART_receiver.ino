@@ -68,7 +68,7 @@ void uart::Reciever::init()
    g_rxPin = rxPin;
 
    pinMode(g_rxPin, INPUT);
-   Serial.print("Setting digital pin "); Serial.print(g_rxPin); Serial.print(" to interrupt on rising pulse.");
+   Serial.print("Setting digital pin "); Serial.print(g_rxPin); Serial.println(" to interrupt on rising pulse.");
    attachInterrupt(digitalPinToInterrupt(g_rxPin), on_get_bit, RISING);
 }
 

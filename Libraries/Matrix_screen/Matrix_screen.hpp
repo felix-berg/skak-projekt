@@ -71,7 +71,6 @@ void Matrix_screen::update() {
 		return;
 	
 	last_latch = mcs;
-	//last_update = mcs;
 
 	// set last latch to low
 	digitalWrite(latch_pin, LOW);

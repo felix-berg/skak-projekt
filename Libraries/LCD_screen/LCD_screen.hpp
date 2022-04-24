@@ -23,6 +23,7 @@ class LCD_screen {
 
 		void set_str(const char * str, int row);
 		void append_str(const char * str, int row);
+		void append_char(char c, int row);
 		void clear_row(int row);
 		void clear_screen();
 
@@ -64,6 +65,11 @@ void LCD_screen::append_str(const char * str, int row) {
 		print_error("Error: appended string, that is too long.\n");
 	}
 	strcat(m_screen_contents[row], str);
+}
+
+void LCD_screen::append_char(char c, int row) {
+	char str[2] = { c, '\0' };
+	append_str(str, row);
 }
 
 void LCD_screen::clear_row(int row) {
