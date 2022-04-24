@@ -1,8 +1,6 @@
 #ifndef STEPPER_HPP
 #define STEPPER_HPP
 
-int num_pulses = 0;
-
 class Stepper {
 public:
   static const long time_until_sleep = 500000 ;
