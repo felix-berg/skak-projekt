@@ -72,6 +72,16 @@ void wait_and_check_for_success()
    Serial.flush();
 }
 
+void wait_and_read_algo_response_to_array(byte * arr, int responseLength)
+{
+   wait_for_algo_response(responseLength);
+
+   for (int i = 0; i < responseLength; i++)
+      arr[i] = Serial.read();
+   
+   Serial.flush();
+}
+
 void send_restart_command()
 {
    byte b = construct_algo_command(RESET, 0, 0); // arbitrary x and y
@@ -101,13 +111,7 @@ void get_possible_moves(byte * arr, int x, int y)
 
    // wait for 8 bytes to return
    int responseLength = 8;
-   wait_for_algo_response(responseLength);
-
-   for (int i = 0; i < 8; i++)
-      arr[i] = Serial.read();
-   
-   // flushed uneeded bytes
-   Serial.flush();
+   wait_and_read_algo_response_to_array(arr, responseLength);
 }
 
 void get_all_pieces(byte * arr)
@@ -118,14 +122,7 @@ void get_all_pieces(byte * arr)
 
    // wait until entire response has been sent
    int responseLength = 8;
-   wait_for_algo_response(responseLength);
-
-   // read every byte of the response
-   for (int i = 0; i < 8; i++)
-      arr[i] = Serial.read();
-   
-   // flush uneeded bytes
-   Serial.flush();
+   wait_and_read_algo_response_to_array(arr, responseLength);
 }
 
 void get_ai_move_from_algorithm(int * fx, int * fy, int * tx, int * ty)
