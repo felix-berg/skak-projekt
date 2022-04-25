@@ -91,7 +91,7 @@ void wait_and_read_algo_response_to_array(byte * arr, int responseLength)
 
    // read array in opposite direction to cope
    // with problem mentioned on line 5
-   for (int i = 7; i >= 0; i--)
+   for (int i = responseLength - 1; i >= 0; i--)
       arr[i] = Serial.read();
 
    // throw away uneeded bytes
