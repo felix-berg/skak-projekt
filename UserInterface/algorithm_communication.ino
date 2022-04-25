@@ -2,6 +2,18 @@
 
 void throw_error(const char *);
 
+typedef unsigned char byte;
+
+/** Algorithm used to cope with an error in the algorithm, 
+    where coordinates were swapped around, so that
+    Is on the 7-8 rows instead of 1-2. 
+    Therefore, y is just inverted in every call to the algorithm. */
+template <typename T>
+void fix_algorithm_coordinate_rotation(T * x, T * y)
+{
+   *y = 7 - *y;
+}
+
 byte construct_algo_command(CommandType code, byte x, byte y) 
 {
   if (x >= 8 || y >= 8) {
@@ -13,6 +25,8 @@ byte construct_algo_command(CommandType code, byte x, byte y)
       return 0b11111110;
    else if (code == CommandType::RESET)
       return 0b11111111;
+
+   fix_algorithm_coordinate_rotation(&x, &y);
 
    return
       (code << 6) // Op code
@@ -83,6 +97,17 @@ void send_restart_command()
 
 void send_move_to_algorithm(int fx, int fy, int tx, int ty)
 {
+   if (fx < 0 || fx > 7 ||
+       fy < 0 || fy > 7 ||
+       tx < 0 || tx > 7 ||
+       ty < 0 || ty > 7)
+   {
+      throw_error("ALG: OB [0-7]");
+   }
+
+   fix_algorithm_coordinate_rotation(&fx, &fy);
+   fix_algorithm_coordinate_rotation(&tx, &ty);
+
    byte fb = construct_algo_command(SET_FROM, fx, fy);
    byte tb = construct_algo_command(SET_TO,   tx, ty);
 
@@ -95,6 +120,8 @@ void send_move_to_algorithm(int fx, int fy, int tx, int ty)
 
 void get_possible_moves(byte * arr, int x, int y)
 {
+   fix_algorithm_coordinate_rotation(&x, &y);
+
    byte cmd = construct_algo_command(GET_POSSIBLE, x, y);
 
    send_byte_to_algorithm(cmd);
@@ -147,6 +174,9 @@ void get_ai_move_from_algorithm(int * fx, int * fy, int * tx, int * ty)
    *fy = (from & 0b111);
    *tx = (to   & 0b111000) >> 3;
    *ty = (to   & 0b111);
+
+   fix_algorithm_coordinate_rotation(fx, fy);
+   fix_algorithm_coordinate_rotation(tx, ty);
 
    // throw away uneeded bytes
    Serial.flush();
