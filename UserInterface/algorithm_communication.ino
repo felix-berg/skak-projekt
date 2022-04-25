@@ -2,8 +2,6 @@
 
 void throw_error(const char *);
 
-typedef unsigned char byte;
-
 /** Algorithm used to cope with an error in the algorithm, 
     where coordinates were swapped around, so that
     Is on the 7-8 rows instead of 1-2. 
@@ -105,9 +103,6 @@ void send_move_to_algorithm(int fx, int fy, int tx, int ty)
       throw_error("ALG: OB [0-7]");
    }
 
-   fix_algorithm_coordinate_rotation(&fx, &fy);
-   fix_algorithm_coordinate_rotation(&tx, &ty);
-
    byte fb = construct_algo_command(SET_FROM, fx, fy);
    byte tb = construct_algo_command(SET_TO,   tx, ty);
 
@@ -120,8 +115,6 @@ void send_move_to_algorithm(int fx, int fy, int tx, int ty)
 
 void get_possible_moves(byte * arr, int x, int y)
 {
-   fix_algorithm_coordinate_rotation(&x, &y);
-
    byte cmd = construct_algo_command(GET_POSSIBLE, x, y);
 
    send_byte_to_algorithm(cmd);
@@ -175,6 +168,7 @@ void get_ai_move_from_algorithm(int * fx, int * fy, int * tx, int * ty)
    *tx = (to   & 0b111000) >> 3;
    *ty = (to   & 0b111);
 
+   // fix rotation of response
    fix_algorithm_coordinate_rotation(fx, fy);
    fix_algorithm_coordinate_rotation(tx, ty);
 
