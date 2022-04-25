@@ -53,13 +53,6 @@ void move_piece_from_to(uart::Reciever & uRX, uart::Transmitter & uTX, int fx, i
 
    // read the resulting byte -> succes??
    byte b = uRX.read_packet().msg;
-   // char a[3];
-
-   // a[0] = '0' + b;
-   // a[1] = '0' + SUCCESS;
-   // a[2] = '\0';
-
-   // throw_error(a);
    if (b != SUCCESS)
       throw_error("STP: No sccss");
 }

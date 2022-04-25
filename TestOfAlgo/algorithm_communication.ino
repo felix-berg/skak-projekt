@@ -59,18 +59,12 @@ void wait_for_algo_response_animation(int responseLength)
    };
 }
 
-void set_first_row(byte b);
-
 void wait_and_check_for_success()
 {
    wait_for_algo_response(1);
 
    // read a byte... was it a success?
-   byte r = Serial.read();
-
-   set_first_row(r);
-
-   if (r != SUCCESS) {
+   if (Serial.read() != SUCCESS) {
       throw_error("No success");
    }
 
@@ -92,6 +86,18 @@ void reverse_byte(byte * b)
    }
 
    *b = n;
+}
+
+void wait_and_read_algo_response_to_array(byte * arr, int responseLength)
+{
+   wait_for_algo_response(responseLength);
+
+   for (int i = 0; i < responseLength; i++) {
+      arr[i] = Serial.read();
+      reverse_byte(arr + i);
+   }
+   
+   Serial.flush();
 }
 
 void send_restart_command()
@@ -124,13 +130,7 @@ void get_possible_moves(byte * arr, int x, int y)
 
    // wait for 8 bytes to return
    int responseLength = 8;
-   wait_for_algo_response(responseLength);
-
-   for (int i = 0; i < responseLength; i++) {
-      arr[i] = Serial.read();
-   }
-   
-   Serial.flush();
+   wait_and_read_algo_response_to_array(arr, responseLength);
 }
 
 void get_all_pieces(byte * arr)
@@ -139,16 +139,9 @@ void get_all_pieces(byte * arr)
 
    send_byte_to_algorithm(cmd);
 
-   // wait for 8 bytes to return
+   // wait until entire response has been sent
    int responseLength = 8;
-   wait_for_algo_response(responseLength);
-
-   for (int i = 0; i < responseLength; i++) {
-      arr[i] = Serial.read();
-      reverse_byte(arr + i);
-   }
-   
-   Serial.flush();
+   wait_and_read_algo_response_to_array(arr, responseLength);
 }
 
 void get_ai_move_from_algorithm(int * fx, int * fy, int * tx, int * ty)

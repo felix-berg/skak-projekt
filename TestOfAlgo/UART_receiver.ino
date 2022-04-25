@@ -39,7 +39,7 @@ void uart::on_get_bit()
 
    // wait for end bit
    if (digitalRead(g_rxPin) != 0)
-      ;// Serial.println("Error: Didn't read correct end bit."); // use Serial.begin() in setup, if you want these error checks
+      Serial.println("Error: Didn't read correct end bit."); // use Serial.begin() in setup, if you want these error checks
 
    delayMicroseconds(g_delayTime);
    globalReceiver->push_packet(result);
@@ -48,7 +48,7 @@ void uart::on_get_bit()
 void uart::Reciever::init() 
 {
    if (globalReceiver != nullptr)  {
-      // Serial.println("Cannot have multiple recievers at once.");
+      Serial.println("Cannot have multiple recievers at once.");
       exit(1);
    }
 
@@ -68,9 +68,7 @@ void uart::Reciever::init()
    g_rxPin = rxPin;
 
    pinMode(g_rxPin, INPUT);
-   // Serial.print("Setting digital pin "); 
-   // Serial.print(g_rxPin); 
-   // Serial.println(" to interrupt on rising pulse.");
+   Serial.print("Setting digital pin "); Serial.print(g_rxPin); Serial.println(" to interrupt on rising pulse.");
    attachInterrupt(digitalPinToInterrupt(g_rxPin), on_get_bit, RISING);
 }
 

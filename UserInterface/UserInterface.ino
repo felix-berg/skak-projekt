@@ -7,10 +7,10 @@
 // user interface
 // output
 LCD_screen lcd { };
-Matrix_screen mtx { 8, 9, 10 };
+Matrix_screen mtx { 13, 12, 11 };
 
 // input
-Buttons buttons { 6, 7 };
+Buttons buttons { 7, 6 };
 
 enum ChessGameState {
    // loop:
@@ -25,33 +25,47 @@ void next_game_state()
    g_gameState = (g_gameState == USER_CHOOSING) ? WAIT_FOR_ALGORITHM : USER_CHOOSING;
 }
 
-const int key_select = 5;
-const int key_left   = 3; 
-const int key_right  = 2;
-const int key_down   = 1;
-const int key_up     = 0;
+void set_first_row(byte b)
+{
+   for (int i = 0; i < 8; i++)
+      mtx.pixels[i] = b;
+   mtx.update();
+   delay(2000);
+}
+
+const int key_select = 3;
+const int key_left   = 4; 
+const int key_right  = 6;
+const int key_down   = 7;
+const int key_up     = 5;
 
 // communication to stepper motors
 uart::Reciever    stepperRX { 2, 9600 };
-uart::Transmitter stepperTX { 3, 9600 };
+uart::Transmitter stepperTX { A2, 9600 };
 
 void setup()
 {
-  // intialize communication with chess-algorithm
-   Serial.begin(9600);
+   stepperRX.init();
+   stepperTX.init();
 
    // initialize user interface
    lcd.init();
    mtx.init();
    buttons.init();
-   stepperRX.init();
-   stepperTX.init();
 
    lcd.clear_screen();
+   lcd.set_str("Begin", 0);
+   lcd.update();
 
-   delay(100);
+   // intialize communication with chess-algorithm
+   Serial.begin(9600);
+   while (!Serial)
+      ;
+
    // restart the game, when arduino is powered on
    send_restart_command();
+   delay(500);
+
 }
 
 void loop_user_choosing();
@@ -68,6 +82,8 @@ void loop()
          wait_for_algorithm(); break;
    }
 
+   lcd.append_char('0' + stepperRX.num_packets(), 1);
+
    update_user_interface();
 }
 
@@ -83,6 +99,11 @@ void move_cursor(int dx, int dy)
 {
    cursorX += dx;
    cursorY += dy;
+
+   if (cursorX < 0) cursorX = 7;
+   if (cursorX > 7) cursorX = 0;
+   if (cursorY < 0) cursorY = 7;
+   if (cursorY > 7) cursorY = 0;
 }
 
 bool g_cursorBlinkState = false;
@@ -148,6 +169,16 @@ void update_chess_screen(bool displayPossibleMoves)
    display_cursor();
 }
 
+void position_to_str(char * s, int x, int y)
+{
+   char letter = 'A' + x;
+   char number = '1' + (7 - y);
+
+   s[0] = letter;
+   s[1] = number;
+   s[2] = '\0';
+}
+
 bool g_chessBoardUpdated = false;
 int fromX = -1,
     fromY = -1;
@@ -166,6 +197,11 @@ void loop_user_choosing()
    if (buttons.key_just_pressed(key_right)) move_cursor( 1,  0);
    if (buttons.key_just_pressed(key_down))  move_cursor( 0,  1);
    if (buttons.key_just_pressed(key_up))    move_cursor( 0, -1);
+
+   char str[3];
+   position_to_str(str, cursorX, cursorY);
+   lcd.set_str("Position: ", 1);
+   lcd.append_str(str, 1);
 
    if (buttons.key_just_pressed(key_select)) {
       if (fromX == -1 || fromY == -1) {
@@ -196,6 +232,10 @@ void loop_user_choosing()
                // send to algorithm
                send_move_to_algorithm(fromX, fromY, toX, toY);
 
+               lcd.set_str("Moving piece...", 0);
+               lcd.set_str("", 1);
+               lcd.update();
+
                // send to stepper motor
                move_piece_from_to(stepperRX, stepperTX, fromX, fromY, toX, toY);
 
@@ -220,9 +260,22 @@ void loop_user_choosing()
 
 void wait_for_algorithm()
 {
+
    // at this point, stepper has moved user piece
    int fx, fy, tx, ty;
    get_ai_move_from_algorithm(&fx, &fy, &tx, &ty);
+
+   lcd.set_str("Countermove: ", 0);
+   lcd.set_str("F: ", 1);
+   char s[3]; 
+   position_to_str(s, fx, fy);
+   lcd.append_str(s, 1);
+
+   lcd.append_str(", T: ", 1);
+   position_to_str(s, tx, ty);
+   lcd.append_str(s, 1);
+   lcd.update();
+
    move_piece_from_to(stepperRX, stepperTX, fx, fy, tx, ty);
 
    next_game_state();

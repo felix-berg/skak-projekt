@@ -1,6 +1,5 @@
 class Buttons {
 	public:
-		static const int pollTime = 10; // ms
 		Buttons(int in, int cl) : input_pin { in }, clock_pin { cl } { };
 
 		void init();
@@ -14,8 +13,6 @@ class Buttons {
 
 		byte m_poll_result = 0;
 		byte m_recent = 0; // which buttons just changed?
-
-		unsigned long m_lastPollTime = 0;
 
 		void long_clock();
 		void short_clock();
@@ -74,13 +71,7 @@ bool Buttons::key_just_pressed(int i) {
 */
 byte Buttons::poll() {
 	byte last = m_poll_result;
-
-	unsigned long ms = millis();
-	if (ms - m_lastPollTime > pollTime) {
-		m_poll_result = read_byte();
-		m_lastPollTime = ms;
-	}
-
+	m_poll_result = read_byte();
 
 	m_recent = (last ^ m_poll_result) & m_poll_result;
 
