@@ -93,6 +93,9 @@ void wait_and_read_algo_response_to_array(byte * arr, int responseLength)
    // with problem mentioned on line 5
    for (int i = 7; i >= 0; i--)
       arr[i] = Serial.read();
+
+   // throw away uneeded bytes
+   Serial.flush();
 }
 
 void send_restart_command()
@@ -134,9 +137,6 @@ void get_possible_moves(byte * arr, int x, int y)
    int responseLength = 8;
    // read into arr
    wait_and_read_algo_response_to_array(arr, responseLength);
-   
-   // flushed uneeded bytes
-   Serial.flush();
 }
 
 void get_all_pieces(byte * arr)
@@ -149,9 +149,6 @@ void get_all_pieces(byte * arr)
    int responseLength = 8;
    // read into arr
    wait_and_read_algo_response_to_array(arr, responseLength);
-   
-   // flush uneeded bytes
-   Serial.flush();
 }
 
 void get_ai_move_from_algorithm(int * fx, int * fy, int * tx, int * ty)
