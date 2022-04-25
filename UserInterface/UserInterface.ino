@@ -91,12 +91,14 @@ unsigned long g_cursorLastBlink = 0;
 /** Override matrix display with blink cursor at (cursorX, cursorY). */
 void display_cursor()
 {
-   if (millis() - g_cursorLastBlink > cursorBlinkTime) {
+   unsigned long ms = millis();
+   if (ms - g_cursorLastBlink > cursorBlinkTime) {
       g_cursorBlinkState = !g_cursorBlinkState;
+
+      g_cursorLastBlink = ms;
    }
 
-   // override pixel on matrix screen to cursors blink state
-
+   // override pixel on matrix screen to cursors blink state:
    // delete old pixel
    mtx.pixels[cursorY] &= ~(0b10000000 >> cursorX);
 
