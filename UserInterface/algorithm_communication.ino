@@ -24,6 +24,7 @@ byte construct_algo_command(CommandType code, byte x, byte y)
    else if (code == CommandType::RESET)
       return 0b11111111;
 
+   // problem mentioned on line 5
    fix_algorithm_coordinate_rotation(&x, &y);
 
    return
@@ -84,6 +85,16 @@ void wait_and_check_for_success()
    Serial.flush();
 }
 
+void wait_and_read_algo_response_to_array(byte * arr, int responseLength)
+{
+   wait_for_algo_response(responseLength);
+
+   // read array in opposite direction to cope
+   // with problem mentioned on line 5
+   for (int i = 7; i >= 0; i--)
+      arr[i] = Serial.read();
+}
+
 void send_restart_command()
 {
    byte b = construct_algo_command(RESET, 0, 0); // arbitrary x and y
@@ -121,10 +132,8 @@ void get_possible_moves(byte * arr, int x, int y)
 
    // wait for 8 bytes to return
    int responseLength = 8;
-   wait_for_algo_response(responseLength);
-
-   for (int i = 0; i < 8; i++)
-      arr[i] = Serial.read();
+   // read into arr
+   wait_and_read_algo_response_to_array(arr, responseLength);
    
    // flushed uneeded bytes
    Serial.flush();
@@ -136,13 +145,10 @@ void get_all_pieces(byte * arr)
 
    send_byte_to_algorithm(cmd);
 
-   // wait until entire response has been sent
+   // wait for 8 bytes to return
    int responseLength = 8;
-   wait_for_algo_response(responseLength);
-
-   // read every byte of the response
-   for (int i = 0; i < 8; i++)
-      arr[i] = Serial.read();
+   // read into arr
+   wait_and_read_algo_response_to_array(arr, responseLength);
    
    // flush uneeded bytes
    Serial.flush();
@@ -168,7 +174,7 @@ void get_ai_move_from_algorithm(int * fx, int * fy, int * tx, int * ty)
    *tx = (to   & 0b111000) >> 3;
    *ty = (to   & 0b111);
 
-   // fix rotation of response
+   // fix rotation of response - problem mentioned on line 5
    fix_algorithm_coordinate_rotation(fx, fy);
    fix_algorithm_coordinate_rotation(tx, ty);
 
