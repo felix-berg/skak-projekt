@@ -96,7 +96,12 @@ void display_cursor()
    }
 
    // override pixel on matrix screen to cursors blink state
-   mtx.pixels[cursorY] &= ~(g_cursorBlinkState << (7 - cursorX));
+
+   // delete old pixel
+   mtx.pixels[cursorY] &= ~(0b10000000 >> cursorX);
+
+   // add on cursor-pixel
+   mtx.pixels[cursorY] |= g_cursorBlinkState << (7 - cursorX);
 }
 
 byte g_chessBoard[8]; 
